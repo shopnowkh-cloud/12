@@ -2,6 +2,7 @@ import { logger } from "./logger";
 import TelegramBotAPI from "./telegram-bot-api";
 import { onUpdate } from "./bot-handler";
 import { splitEmojis, getChatIds } from "./bot-helper";
+import { ALL_TELEGRAM_REACTIONS } from "./bot-constants";
 
 const POLL_TIMEOUT = 30; // seconds — Telegram long-poll window
 const RETRY_DELAY = 5000; // ms to wait after an error before retrying
@@ -19,7 +20,9 @@ export async function startPolling(): Promise<void> {
     return;
   }
 
-  const reactions = splitEmojis(process.env["EMOJI_LIST"]);
+  const reactions = splitEmojis(process.env["EMOJI_LIST"]).length > 0
+    ? splitEmojis(process.env["EMOJI_LIST"])
+    : ALL_TELEGRAM_REACTIONS;
   const restrictedChats = getChatIds(process.env["RESTRICTED_CHATS"]);
   const randomLevel = parseInt(process.env["RANDOM_LEVEL"] ?? "0", 10);
 

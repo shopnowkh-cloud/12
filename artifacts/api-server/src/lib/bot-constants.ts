@@ -1,3 +1,15 @@
+// All emoji reactions supported by Telegram's setMessageReaction API
+export const ALL_TELEGRAM_REACTIONS: string[] = [
+  "👍","👎","❤️","🔥","🥰","👏","😁","🤔","🤯","😱",
+  "🤬","😢","🎉","🤩","🤮","💩","🙏","👌","🕊","🤡",
+  "🥱","🥴","😍","🐳","❤️‍🔥","🌚","🌭","💯","🤣","⚡",
+  "🍌","🏆","💔","🤨","😐","🍓","🍾","💋","🖕","😈",
+  "😴","😭","🤓","👻","👨‍💻","👀","🎃","🙈","😇","😨",
+  "🤝","✍️","🤗","🫡","🎅","🎄","☃️","💅","🤪","🗿",
+  "🆒","💘","🙉","🦄","😘","💊","🙊","😎","👾","🤷",
+  "😡",
+];
+
 export const startMessage = `👋 Hello there, UserName !
 
 Welcome to the *Auto Emoji Reaction Bot 🎉*, ready to sprinkle your conversations with a little extra happiness!
