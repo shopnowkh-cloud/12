@@ -17,11 +17,7 @@ A Telegram bot that automatically reacts to messages in channels, groups, and pr
 
 ## Where things live
 
-- `artifacts/api-server/src/routes/bot.ts` — webhook handler + landing page route
-- `artifacts/api-server/src/lib/bot-handler.ts` — core Telegram update processing logic
-- `artifacts/api-server/src/lib/telegram-bot-api.ts` — Telegram Bot API client
-- `artifacts/api-server/src/lib/bot-constants.ts` — messages and HTML landing page
-- `artifacts/api-server/src/lib/bot-helper.ts` — emoji splitting, chat ID parsing, random reaction
+- `artifacts/api-server/src/index.ts` — everything: constants, helpers, Telegram API calls, update handler, polling loop, Express server
 
 ## Architecture decisions
 
