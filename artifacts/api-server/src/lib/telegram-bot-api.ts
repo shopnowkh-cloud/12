@@ -97,4 +97,30 @@ export default class TelegramBotAPI {
       ok,
     });
   }
+
+  async getUpdates(offset: number, timeout: number): Promise<TelegramUpdate[]> {
+    const response = await fetch(this.apiUrl + "getUpdates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ offset, timeout, allowed_updates: ["message", "channel_post", "pre_checkout_query"] }),
+      // long-poll: wait slightly longer than the Telegram timeout
+      signal: AbortSignal.timeout((timeout + 5) * 1000),
+    });
+    const data = await response.json() as { ok: boolean; result: TelegramUpdate[]; description?: string };
+    if (!data.ok) {
+      throw new Error(`getUpdates failed: ${data.description ?? "unknown"}`);
+    }
+    return data.result;
+  }
+
+  async deleteWebhook(): Promise<void> {
+    await this.callApi("deleteWebhook", { drop_pending_updates: false });
+  }
+}
+
+export interface TelegramUpdate {
+  update_id: number;
+  message?: unknown;
+  channel_post?: unknown;
+  pre_checkout_query?: unknown;
 }

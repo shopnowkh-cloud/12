@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startPolling } from "./lib/bot-poller";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,9 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Start Telegram long-poll loop in the background (non-blocking)
+  startPolling().catch((err) => {
+    logger.error({ err }, "Polling loop crashed unexpectedly");
+  });
 });
