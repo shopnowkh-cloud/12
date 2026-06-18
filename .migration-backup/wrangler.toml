@@ -1,3 +1,0 @@
-name = "auto-reaction-bot"
-main = "api/worker.js"
-compatibility_date = "2024-06-02"
