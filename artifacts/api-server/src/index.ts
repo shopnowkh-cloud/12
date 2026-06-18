@@ -137,7 +137,6 @@ async function handleUpdate(
           { text: "➕ Add to Channel ➕", url: `https://t.me/${botUsername}?startchannel=botstart` },
           { text: "➕ Add to Group ➕", url: `https://t.me/${botUsername}?startgroup=botstart` },
         ],
-        [{ text: "Github Source 📥", url: "https://github.com/Malith-Rukshan/Auto-Reaction-Bot" }],
       ]);
     } else if (update.message && text === "/reactions") {
       await sendMessage(token, chat.id, "✅ Enabled Reactions:\n\n" + reactions.join(" "));
