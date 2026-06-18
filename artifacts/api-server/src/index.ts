@@ -37,6 +37,8 @@ Welcome to the *Auto Emoji Reaction Bot 🎉*, ready to sprinkle your conversati
 
 Let's elevate our conversations with more energy and color! 🚀`;
 
+const DONATE_MSG = `🙏 Support Auto Reaction Bot ✨ and help us stay online! Your donations keep our services live. Every star makes a difference! Thank you! 🌟🚀`;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function randomReaction(list: string[]): string {
@@ -58,6 +60,7 @@ interface TgUpdate {
   update_id: number;
   message?: TgMessage;
   channel_post?: TgMessage;
+  pre_checkout_query?: { id: string; from: { id: number } };
 }
 interface TgMessage {
   chat: { id: number; type: string; title?: string };
@@ -85,7 +88,7 @@ async function tg(token: string, action: string, body: Record<string, unknown>):
 async function getUpdates(token: string, offset: number, timeout: number): Promise<TgUpdate[]> {
   return tg(token, "getUpdates", {
     offset, timeout,
-    allowed_updates: ["message", "channel_post"],
+    allowed_updates: ["message", "channel_post", "pre_checkout_query"],
   }) as Promise<TgUpdate[]>;
 }
 
@@ -103,6 +106,18 @@ async function setReaction(token: string, chatId: number, messageId: number, emo
   });
 }
 
+async function sendInvoice(token: string, chatId: number): Promise<void> {
+  await tg(token, "sendInvoice", {
+    chat_id: chatId, title: "Donate to Auto Reaction Bot ✨",
+    description: DONATE_MSG, payload: "{}", provider_token: "",
+    start_parameter: "donate", currency: "XTR",
+    prices: [{ label: "Pay ⭐️5", amount: 5 }],
+  });
+}
+
+async function answerCheckout(token: string, queryId: string): Promise<void> {
+  await tg(token, "answerPreCheckoutQuery", { pre_checkout_query_id: queryId, ok: true });
+}
 
 // ─── Update handler ───────────────────────────────────────────────────────────
 
@@ -119,12 +134,15 @@ async function handleUpdate(
       const name = chat.type === "private" ? (from?.first_name ?? "User") : (chat.title ?? "Group");
       await sendMessage(token, chat.id, START_MSG.replace("UserName", name), [
         [
-          { text: "➕ Add to Channel ➕", url: `https://t.me/${botUsername}?startchannel=botstart` },
-          { text: "➕ Add to Group ➕", url: `https://t.me/${botUsername}?startgroup=botstart` },
+          { text: "➕ Add to Channel", url: `https://t.me/${botUsername}?startchannel=botstart` },
+          { text: "➕ Add to Group", url: `https://t.me/${botUsername}?startgroup=botstart` },
         ],
+        [{ text: "💝 Support Us - Donate 🤝", url: `https://t.me/${botUsername}?start=donate` }],
       ]);
     } else if (update.message && text === "/reactions") {
       await sendMessage(token, chat.id, "✅ Enabled Reactions:\n\n" + reactions.join(" "));
+    } else if (update.message && (text === "/donate" || text === "/start donate")) {
+      await sendInvoice(token, chat.id);
     } else if (!restrictedChats.includes(chat.id)) {
       const isGroup = ["group", "supergroup"].includes(chat.type);
       const threshold = 1 - randomLevel / 10;
@@ -132,6 +150,9 @@ async function handleUpdate(
         await setReaction(token, chat.id, message_id, randomReaction(reactions));
       }
     }
+  } else if (update.pre_checkout_query) {
+    await answerCheckout(token, update.pre_checkout_query.id);
+    await sendMessage(token, update.pre_checkout_query.from.id, "Thank you for your donation! 💝");
   }
 }
 
