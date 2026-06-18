@@ -1,6 +1,8 @@
 import { createServer } from "http";
 import pino from "pino";
 
+// ── Logger ────────────────────────────────────────────────────────────────────
+
 const logger = pino({
   level: process.env["LOG_LEVEL"] ?? "info",
   ...(process.env.NODE_ENV !== "production" && {
@@ -8,13 +10,13 @@ const logger = pino({
   }),
 });
 
+// ── Config ────────────────────────────────────────────────────────────────────
+
 const ALL_REACTIONS = [
-  "👍","👎","❤️","🔥","🥰","👏","😁","🤔","🤯","😱",
-  "🤬","😢","🎉","🤩","🤮","💩","🙏","👌","🕊","🤡",
-  "🥱","🥴","😍","🐳","❤️‍🔥","🌚","🌭","💯","🤣","⚡",
-  "🍌","🏆","💔","🤨","😐","🍓","🍾","💋","🖕","😈",
-  "😴","😭","🤓","👻","👨‍💻","👀","🎃","🙈","😇","😨",
-  "🤝","✍️","🤗","🫡","🎅","🎄","☃️","💅","🤪","🗿",
+  "👍","👎","❤️","🔥","🥰","👏","😁","🤔","🤯","😱","🤬","😢","🎉","🤩","🤮",
+  "💩","🙏","👌","🕊","🤡","🥱","🥴","😍","🐳","❤️‍🔥","🌚","🌭","💯","🤣","⚡",
+  "🍌","🏆","💔","🤨","😐","🍓","🍾","💋","🖕","😈","😴","😭","🤓","👻","👨‍💻",
+  "👀","🎃","🙈","😇","😨","🤝","✍️","🤗","🫡","🎅","🎄","☃️","💅","🤪","🗿",
   "🆒","💘","🙉","🦄","😘","💊","🙊","😎","👾","🤷","😡",
 ];
 
@@ -24,7 +26,7 @@ Welcome to the *Auto Emoji Reaction Bot 🎉*, ready to sprinkle your conversati
 
 💁‍♂️ Here's how I spice up your chats:
 
-*✨ DM Magic*: Message me and receive a surprise emoji in return. Expect the unexpected and enjoy the fun!
+*✨ DM Magic*: Message me and receive a surprise emoji in return!
 *🏖 Group & Channel*: Add me to your groups or channels, and I'll keep the vibe positive by reacting to messages with engaging emojis.
 
 ✍️ To view the emojis I can use, simply type /reactions.
@@ -33,18 +35,7 @@ Let's elevate our conversations with more energy and color! 🚀`;
 
 const DONATE_MSG = `🙏 Support Auto Reaction Bot ✨ and help us stay online! Your donations keep our services live. Every star makes a difference! Thank you! 🌟🚀`;
 
-function randomReaction(list: string[]): string {
-  return list[Math.floor(Math.random() * list.length)];
-}
-
-function parseEmojis(str?: string): string[] {
-  if (!str) return [];
-  return str.match(/(\p{Emoji_Presentation}|\p{Extended_Pictographic}|\p{Emoji_Modifier_Base})/gu) ?? [];
-}
-
-function parseChatIds(str?: string): number[] {
-  return str ? str.split(",").map(Number).filter(Boolean) : [];
-}
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface TgUpdate {
   update_id: number;
@@ -52,18 +43,21 @@ interface TgUpdate {
   channel_post?: TgMessage;
   pre_checkout_query?: { id: string; from: { id: number } };
 }
+
 interface TgMessage {
   chat: { id: number; type: string; title?: string };
   from?: { id: number; first_name: string };
   message_id: number;
   text?: string;
 }
+
 interface TgResult<T> { ok: boolean; result: T; description?: string }
 
+// ── Telegram API ──────────────────────────────────────────────────────────────
+
 async function tg(token: string, action: string, body: Record<string, unknown>): Promise<unknown> {
-  const isLongPoll = action === "getUpdates";
-  const pollSec = (body["timeout"] as number ?? 30);
-  const signal = AbortSignal.timeout(isLongPoll ? (pollSec + 5) * 1000 : 10_000);
+  const pollTimeout = ((body["timeout"] as number) ?? 30) + 5;
+  const signal = AbortSignal.timeout(action === "getUpdates" ? pollTimeout * 1000 : 10_000);
   const res = await fetch(`https://api.telegram.org/bot${token}/${action}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -75,43 +69,50 @@ async function tg(token: string, action: string, body: Record<string, unknown>):
   return data.result;
 }
 
-async function getUpdates(token: string, offset: number, timeout: number): Promise<TgUpdate[]> {
-  return tg(token, "getUpdates", {
+const getUpdates = (token: string, offset: number, timeout: number) =>
+  tg(token, "getUpdates", {
     offset, timeout,
     allowed_updates: ["message", "channel_post", "pre_checkout_query"],
   }) as Promise<TgUpdate[]>;
-}
 
-async function sendMessage(token: string, chatId: number, text: string, keyboard?: unknown[][]): Promise<void> {
-  await tg(token, "sendMessage", {
+const sendMessage = (token: string, chatId: number, text: string, keyboard?: unknown[][]) =>
+  tg(token, "sendMessage", {
     chat_id: chatId, text, parse_mode: "Markdown", disable_web_page_preview: true,
     ...(keyboard && { reply_markup: { inline_keyboard: keyboard } }),
   });
-}
 
-async function setReaction(token: string, chatId: number, messageId: number, emoji: string): Promise<void> {
-  await tg(token, "setMessageReaction", {
+const setReaction = (token: string, chatId: number, messageId: number, emoji: string) =>
+  tg(token, "setMessageReaction", {
     chat_id: chatId, message_id: messageId,
     reaction: [{ type: "emoji", emoji }], is_big: true,
   });
-}
 
-async function sendInvoice(token: string, chatId: number): Promise<void> {
-  await tg(token, "sendInvoice", {
+const sendInvoice = (token: string, chatId: number) =>
+  tg(token, "sendInvoice", {
     chat_id: chatId, title: "Donate to Auto Reaction Bot ✨",
     description: DONATE_MSG, payload: "{}", provider_token: "",
     start_parameter: "donate", currency: "XTR",
     prices: [{ label: "Pay ⭐️5", amount: 5 }],
   });
-}
 
-async function answerCheckout(token: string, queryId: string): Promise<void> {
-  await tg(token, "answerPreCheckoutQuery", { pre_checkout_query_id: queryId, ok: true });
-}
+const answerCheckout = (token: string, queryId: string) =>
+  tg(token, "answerPreCheckoutQuery", { pre_checkout_query_id: queryId, ok: true });
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const randomItem = (list: string[]) => list[Math.floor(Math.random() * list.length)];
+
+const parseEmojis = (str?: string) =>
+  str?.match(/(\p{Emoji_Presentation}|\p{Extended_Pictographic}|\p{Emoji_Modifier_Base})/gu) ?? [];
+
+const parseChatIds = (str?: string): number[] =>
+  str ? str.split(",").map(Number).filter(Boolean) : [];
+
+// ── Update handler ────────────────────────────────────────────────────────────
 
 async function handleUpdate(
   update: TgUpdate, token: string, reactions: string[],
-  restrictedChats: number[], botUsername: string, randomLevel: number,
+  restricted: number[], botUsername: string, randomLevel: number,
 ): Promise<void> {
   const content = update.message ?? update.channel_post;
 
@@ -123,7 +124,7 @@ async function handleUpdate(
       await sendMessage(token, chat.id, START_MSG.replace("UserName", name), [
         [
           { text: "➕ Add to Channel", url: `https://t.me/${botUsername}?startchannel=botstart` },
-          { text: "➕ Add to Group", url: `https://t.me/${botUsername}?startgroup=botstart` },
+          { text: "➕ Add to Group",   url: `https://t.me/${botUsername}?startgroup=botstart`  },
         ],
         [{ text: "💝 Support Us - Donate 🤝", url: `https://t.me/${botUsername}?start=donate` }],
       ]);
@@ -131,11 +132,10 @@ async function handleUpdate(
       await sendMessage(token, chat.id, "✅ Enabled Reactions:\n\n" + reactions.join(" "));
     } else if (update.message && (text === "/donate" || text === "/start donate")) {
       await sendInvoice(token, chat.id);
-    } else if (!restrictedChats.includes(chat.id)) {
+    } else if (!restricted.includes(chat.id)) {
       const isGroup = ["group", "supergroup"].includes(chat.type);
-      const threshold = 1 - randomLevel / 10;
-      if (!isGroup || Math.random() <= threshold) {
-        await setReaction(token, chat.id, message_id, randomReaction(reactions));
+      if (!isGroup || Math.random() <= 1 - randomLevel / 10) {
+        await setReaction(token, chat.id, message_id, randomItem(reactions));
       }
     }
   } else if (update.pre_checkout_query) {
@@ -144,17 +144,19 @@ async function handleUpdate(
   }
 }
 
+// ── Polling loop ──────────────────────────────────────────────────────────────
+
 async function startPolling(): Promise<void> {
-  const token = process.env["BOT_TOKEN"];
+  const token    = process.env["BOT_TOKEN"];
   const username = process.env["BOT_USERNAME"];
   if (!token || !username) {
     logger.warn("BOT_TOKEN or BOT_USERNAME not set — polling disabled");
     return;
   }
 
-  const configured = parseEmojis(process.env["EMOJI_LIST"]);
-  const reactions = configured.length > 0 ? configured : ALL_REACTIONS;
-  const restrictedChats = parseChatIds(process.env["RESTRICTED_CHATS"]);
+  const configured  = parseEmojis(process.env["EMOJI_LIST"]);
+  const reactions   = configured.length > 0 ? configured : ALL_REACTIONS;
+  const restricted  = parseChatIds(process.env["RESTRICTED_CHATS"]);
   const randomLevel = parseInt(process.env["RANDOM_LEVEL"] ?? "0", 10);
 
   try {
@@ -170,23 +172,24 @@ async function startPolling(): Promise<void> {
       const updates = await getUpdates(token, offset, 30);
       for (const update of updates) {
         offset = update.update_id + 1;
-        handleUpdate(update, token, reactions, restrictedChats, username, randomLevel).catch((err) =>
-          logger.error({ err, update_id: update.update_id }, "Error processing update"),
-        );
+        handleUpdate(update, token, reactions, restricted, username, randomLevel)
+          .catch((err) => logger.error({ err, update_id: update.update_id }, "Error processing update"));
       }
     } catch (err) {
       logger.warn({ err }, "getUpdates error — retrying in 5 s");
-      await new Promise((r) => setTimeout(r, 5000));
+      await new Promise((r) => setTimeout(r, 5_000));
     }
   }
 }
+
+// ── Server ────────────────────────────────────────────────────────────────────
 
 const port = Number(process.env["PORT"]);
 if (!port) throw new Error("PORT env var is required");
 
 createServer((_req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ status: "ok" }));
+  res.end('{"status":"ok"}');
 }).listen(port, () => {
   logger.info({ port }, "Bot running");
   startPolling().catch((err) => logger.error({ err }, "Polling loop crashed"));
